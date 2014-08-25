@@ -1,33 +1,10 @@
 Historical Climate Datasets
 ===========================
 
-Jeffrey D. Walker, PhD
+[Jeffrey D. Walker, PhD](http://walkerjeff.com)
 
-## Maurer - Gridded Meteorological Data: 1949-2010
+This repo contains scripts for fetching and converting climate datasets.
 
-- **Folder**: `/maurer`
-- **URL**: `http://www.engr.scu.edu/~emaurer/gridded_obs/index_gridded_obs.html`
-- **Description**: Daily 1/8-degree gridded meteorological data [1 Jan 1949 - 31 Dec 2010]
-- **Variabels**: Precipitation (mm), max/min temperature (C), and wind speed (m/s).
+## Datasets
 
-### Fetch Data
-
-To get the daily dataset saved to `maurer/data/day`:
-
-```
-make day 
-```
-
-To fetch the monthly dataset saved to `maurer/data/mon`:
-
-```
-make mon
-```
-
-### Create Database
-
-To convert the raw data files to an SQLite database saved to `maurer/db/maurer_mon.db`:
-
-```
-make db_mon
-```
+- `maurer/`: Daily and Monthly 1/8-degree gridded meteorological data [1 Jan 1949 - 31 Dec 2010] by Maurer et al., 2002
