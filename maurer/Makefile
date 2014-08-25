@@ -12,6 +12,6 @@ mon:
 
 db_mon:
 	mkdir -p db/
-	RScript --slave r/make_database.R $(realpath ./data/mon/east) $(realpath ./db) maurer_mon.db
+	RScript --slave r/db_mon.R $(realpath ./data/mon/east) $(realpath ./db) maurer_mon.db
 
 all: mon db_mon
