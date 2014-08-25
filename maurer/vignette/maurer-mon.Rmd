@@ -1,0 +1,171 @@
+---
+title: "Monthly Climate Dataset by Maurer et al, 2002"
+author: "Jeffrey D Walker, PhD"
+date: "August 25, 2014"
+output:
+  html_document:
+    toc: yes
+---
+
+This document demonstrates how to access the monthly climate dataset by Maurer et al., 2002. It is assumed that the raw data have been downloaded and converted to an SQLite database using the makefile in this repo. To create this database run the following commands at the command line.
+
+```
+$ cd maurer/
+$ make mon
+$ make db_mon
+```
+
+There should now be an SQLite database at `maurer/db/maurer_mon.db`.
+
+## Load Libraries
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(ggmap)
+library(ggplot2)
+theme_set(theme_bw())
+```
+
+## Create Database Connection
+
+This document uses the `dplyr` package to connect and retreive data from the climate database . You could also use the `RSQLite` package, but `dplyr` provides greater flexibility and power by translating R function calls to SQL queries (see the [dplyr databases vignette](http://cran.rstudio.com/web/packages/dplyr/vignettes/databases.html)).
+
+```{r db conn}
+db <- src_sqlite("../db/maurer_mon.db", create = FALSE)
+db
+```
+
+## Grid Table
+
+The `grid` table contains the lat/lon for each data file. This dataframe is relatively small so it can be loaded into a data frame directly.
+
+```{r load grid}
+df.grid <- tbl(db, "grid") %>%
+  collect
+summary(df.grid)
+head(df.grid)
+```
+
+### Map of Grid
+
+A map of the grid locations is created using the `ggmap` package.
+
+```{r map grid}
+map <- get_map(location=c(lon=mean(range(df.grid$LON)), lat=mean(range(df.grid$LAT))),
+               zoom=4, maptype="satellite", color='bw')
+
+ggmap(map, darken=c(0.25, "white"), extent="device") +
+  geom_point(aes(x=LON, y=LAT, color=REGION), data=df.grid, size=1) +
+  scale_color_manual('', values=c('Northeast'='orangered',
+                                  'Mideast'='chartreuse3',
+                                  'Southeast'='steelblue'))
+```
+
+Here is the grid over massachusetts, which shows the grid spacing.
+
+```{r map grid zoom, warning=FALSE}
+map <- get_map(location=c(lon=-72.5, lat=42.4),
+               zoom=7, maptype="satellite", color='bw')
+
+ggmap(map, darken=c(0.25, "white"), extent="device") +
+  geom_point(aes(x=LON, y=LAT, color=REGION), data=df.grid, size=2) +
+  scale_color_manual('', values=c('Northeast'='orangered',
+                                  'Mideast'='chartreuse3',
+                                  'Southeast'='steelblue'))
+```
+
+## Data Table
+
+### Dataset for Single Location
+
+To load the climate dataset for a single location, first choose a random row from the grid dataset.
+
+```{r random loc}
+set.seed(125)
+loc <- df.grid[sample(nrow(df.grid), 1),]
+loc
+```
+
+Now query the `data` table using the `dplyr::filter()` command.
+
+```{r df loc}
+df.loc <- tbl(db, "data") %>%
+  filter(LAT==loc[['LAT']], LON==loc[['LON']]) %>%
+  collect
+summary(df.loc)
+```
+
+And then plot the data.
+
+```{r plot loc}
+df.loc %>%
+  mutate(DATE=ymd(paste(YEAR, MONTH, 1, sep='-'))) %>%
+  gather(VAR, VALUE, PRCP:WIND) %>%
+  ggplot(aes(DATE, VALUE)) +
+  geom_line() +
+  facet_wrap(~VAR, scales='free_y', ncol=1) +
+  labs(x="Month/Year", y="")
+```
+
+### Regional Average Datasets
+
+Regional average time series are created using the `dplyr` package. Note that the `data` table is too large to store in memory as a single data frame, and thus performing this aggregation on the raw data is not really feasible from within R. However, the `dplyr` package solves this problem by translating the function calls (e.g. `filter()`, `group_by()`, and `summarize()`) to an SQL query that is executed within the database. In other words, the aggregation is performed within the database instead of R, and the result is returned as data frame.
+
+The following code computes the mean and standard deviation of each monthly value by region.
+
+```{r reg}
+df.reg <- tbl(db, "data") %>%
+  group_by(REGION, YEAR, MONTH) %>%
+  summarise(PRCP.MEAN=mean(PRCP),
+            TMAX.MEAN=mean(TMAX),
+            TMIN.MEAN=mean(TMIN),
+            WIND.MEAN=mean(WIND),
+            PRCP.SD=sd(PRCP),
+            TMAX.SD=sd(TMAX),
+            TMIN.SD=sd(TMIN),
+            WIND.SD=sd(WIND)) %>%
+  collect %>%
+  gather(VAR.STAT, VALUE, PRCP.MEAN:WIND.SD) %>%
+  separate(VAR.STAT, c("VAR", "STAT")) %>%
+  spread(STAT, VALUE) %>%
+  mutate(VAR=factor(VAR)) %>%
+  mutate(REGION=ordered(REGION, levels=c('Northeast', 'Mideast', 'Southeast')))
+head(df.reg)
+summary(df.reg)
+```
+
+Finally, we can plot the regional average climate timeseries. The line shows the mean value, and the shaded areas show the range mean +/- 1 stdev.
+
+This figure shows that the Southeast region has higher temperatures, lower wind speeds, and more variable precipitation. The Northeast has greater range of temperatures and the highest wind speed.
+
+```{r plot reg, fig.width=8, fig.height=8}
+df.reg %>%
+  mutate(DATE=ymd(paste(YEAR, MONTH, 1, sep='-'))) %>%
+  ggplot() +
+  geom_ribbon(aes(x=DATE, ymin=MEAN-SD, ymax=MEAN+SD), fill='grey20') +
+  geom_line(aes(x=DATE, y=MEAN), color='blue') +
+  facet_grid(VAR~REGION, scales='free_y') +
+  labs(x="Month/Year", y="Mean +/- 1 SD")
+```
+
+This figure zooms in to a single decade (1990-2000) to show more detail.
+
+```{r plot reg zoom, fig.width=8, fig.height=8}
+df.reg %>%
+  filter(YEAR>=1990, YEAR<2000) %>%
+  mutate(DATE=ymd(paste(YEAR, MONTH, 1, sep='-'))) %>%
+  ggplot() +
+  geom_ribbon(aes(x=DATE, ymin=MEAN-SD, ymax=MEAN+SD), fill='grey50') +
+  geom_line(aes(x=DATE, y=MEAN), color='blue') +
+  facet_grid(VAR~REGION, scales='free_y') +
+  labs(x="Month/Year", y="Mean +/- 1 SD")
+```
+
+# Session Info
+
+```{r session}
+sessionInfo()
+```
+

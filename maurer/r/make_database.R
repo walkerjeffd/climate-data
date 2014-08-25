@@ -32,10 +32,7 @@ library(stringr)
 library(lubridate)
 library(tidyr)
 library(dplyr)
-library(ggmap)
 library(RSQLite)
-library(ggplot2)
-theme_set(theme_bw())
 
 # get filenames in data directory
 cat(hr, '\n')
@@ -53,15 +50,6 @@ files <- list.files(DATA_DIR) %>%
                                       'Southeast')))
 cat('Found ', nrow(files), ' files\n')
 
-# # create map of locations colored by region
-# # map <- get_map(location=c(lon=mean(range(files$LON)), lat=mean(range(files$LAT))),
-# #                zoom=4, maptype="satellite", color='bw')
-# # ggmap(map, darken=c(0.25, "white"), extent="device") +
-# #   geom_point(aes(x=LON, y=LAT, color=REGION), data=files, size=1) +
-# #   scale_color_manual('', values=c('Northeast'='orangered',
-# #                                   'Mideast'='chartreuse3',
-# #                                   'Southeast'='steelblue'))
-#
 # helper function
 read.climate.file <- function(dir, file) {
   x <- read.table(file.path(dir, file))
@@ -121,34 +109,3 @@ cat(hr, '\n')
 cat('CLOSE DATABSE CONNECTION\n')
 dbDisconnect(conn)
 
-# # summarize data using dplyr
-# db <- src_sqlite("climate.db", create = FALSE)
-#
-# df.1 <- tbl(db, "data") %>%
-#   filter(LAT==files$LAT[1], LON==files$LON[1]) %>%
-#   collect
-#
-# df <- tbl(db, "data") %>%
-#   group_by(REGION, YEAR, MONTH) %>%
-#   summarise(PRCP.MEAN=mean(PRCP),
-#             TMAX.MEAN=mean(TMAX),
-#             TMIN.MEAN=mean(TMIN),
-#             WIND.MEAN=mean(WIND),
-#             PRCP.SD=sd(PRCP),
-#             TMAX.SD=sd(TMAX),
-#             TMIN.SD=sd(TMIN),
-#             WIND.SD=sd(WIND)) %>%
-#   collect %>%
-#   gather(VAR.STAT, VALUE, PRCP.MEAN:WIND.SD) %>%
-#   separate(VAR.STAT, c("VAR", "STAT")) %>%
-#   spread(STAT, VALUE) %>%
-#   mutate(VAR=factor(VAR))
-#
-# df %>%
-#   mutate(DATE=ymd(paste(YEAR, MONTH, 1, sep='-'))) %>%
-#   ggplot() +
-#   geom_ribbon(aes(x=DATE, ymin=MEAN-SD, ymax=MEAN+SD), fill='grey50') +
-#   geom_line(aes(x=DATE, y=MEAN), color='blue') +
-#   facet_grid(VAR~REGION, scales='free_y') +
-#   labs(x="Month/Year", y="Mean")
-#
