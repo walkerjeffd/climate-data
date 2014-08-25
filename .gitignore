@@ -1,0 +1,5 @@
+.Rhistory
+.Rdata
+*.tar.gz
+maurer/data
+maurer/db
