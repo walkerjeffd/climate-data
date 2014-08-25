@@ -2,7 +2,7 @@ Gridded Meteorological Data: 1949-2010 by Ed Maurer, et al.
 ===========================================================
 
 - **Folder**: `/maurer`
-- **URL**: `http://www.engr.scu.edu/~emaurer/gridded_obs/index_gridded_obs.html`
+- **URL**: http://www.engr.scu.edu/~emaurer/gridded_obs/index_gridded_obs.html
 - **Description**: Daily and Monthly 1/8-degree gridded meteorological data [1 Jan 1949 - 31 Dec 2010]
 - **Variables**: Precipitation (mm), Max/Min Temperature (C), and Wind Speed (m/s).
 
